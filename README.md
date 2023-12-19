@@ -12,11 +12,11 @@ Following careful consideration, the initial choice advocates for the unary prot
 
 In summary, the unary protocol serves as the starting point, offering scalability opportunities despite the challenge of heightened RPS, and it remains pivotal to our continuous assessment of the system's performance and adaptability.
 
-![driver service](img/driver-service.png)
+![driver service](docs/img/driver-service.png)
 
 To efficiently handle the substantial volume of data relayed by drivers to the consumer, the driver data will be directed to a message queue. This strategic implementation is twofold: it facilitates the seamless transfer of large volumes of driver data while ensuring reliable reception by our designated consumer service—referred to here as the customer service. Leveraging a message queue is instrumental in guaranteeing the consistent and orderly delivery of driver data to the intended consumer service. This ensures robustness and reliability in the data transmission process, essential for maintaining the integrity and effectiveness of our tracking system.
 
-![driver service connect with message broker](img/driver-service-to-message-broker.png)
+![driver service connect with message broker](docs/img/driver-service-to-message-broker.png)
 
 Customer service, within the context of our system, assumes a pivotal role in handling and dispatching incoming messages to the client in real-time. Given the imperative need for immediate data delivery, we've opted for the utilization of a streaming protocol.
 
@@ -24,18 +24,16 @@ Addressing concerns about scalability, a proposed strategy involves the establis
 
 To ensure seamless message dissemination and guarantee uniform reception across all consumers, each customer service instance subscribes to this topic using distinct groups. This approach assures that every consumer receives identical messages, fostering a synchronized and consistent real-time data delivery mechanism.
 
-![customer service subscribe to message broker](img/customer-service-subscribe-message-broker.png)
+![customer service subscribe to message broker](docs/img/customer-service-subscribe-message-broker.png)
 
 The customer service undertakes the crucial responsibility of managing its client connections while ensuring the comprehensive delivery of driver locations to all clients.
 
 The primary objective here is twofold: first, to effectively handle the connections of clients that remain connected to the customer service, and second, to ensure the seamless distribution of all driver location data to every connected client."
 
-![customer service flow](img/customer-service-flow.png)
+![customer service flow](docs/img/customer-service-flow.png)
 
 When considering the scalability concerns associated with the customer service, implementing a load balancer emerges as a strategic solution. The introduction of a load balancer serves as a prudent measure to address scalability challenges effectively.
 
 By incorporating a load balancer into the architecture of the customer service, we ensure a balanced and optimized distribution of incoming requests across multiple instances. This not only enhances the service's ability to manage and handle client connections efficiently but also lays the groundwork for seamless scalability as the system grows in both size and complexity.
 
-![customer load_balancer](img/customer-service-load-balancer.png)
-
-
+![customer load_balancer](docs/img/customer-service-load-balancer.png)
