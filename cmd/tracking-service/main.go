@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// app related
-	done := make(chan os.Signal, 2)
+	done := make(chan os.Signal, 1)
 	ctx := context.Background()
 	dep := InitDependency()
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
