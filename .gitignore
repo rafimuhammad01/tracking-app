@@ -1,2 +1,10 @@
+# ide
 .idea
 .vscode
+
+# config
+config/staging.yaml
+config/production.yaml
+
+# binary files
+tracking-service

@@ -1,0 +1,15 @@
+kafka:
+  connection:
+    brokers:
+      - "localhost:9092"
+    username: ""
+    password: ""
+  consumer:
+    min_bytes: 1
+    max_bytes: 10e6
+    topic: location
+
+http:
+  port: 8080
+
+debug: true

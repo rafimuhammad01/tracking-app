@@ -47,7 +47,7 @@ func (s *Handler) GetLatestLocation(w http.ResponseWriter, r *http.Request) {
 
 	// register customer so we can track
 	s.trackingSvc.Register(customer, locChan)
-	log.Info().Any("customer", customer).Msg("client registered")
+	log.Debug().Any("customer", customer).Msg("client registered")
 
 	// listen to location channel
 	for {

@@ -2,9 +2,11 @@ package kafka
 
 import (
 	"context"
-	"time"
+	"encoding/json"
 
 	"github.com/rafimuhammad01/tracking-app/track"
+	"github.com/rs/zerolog/log"
+	"github.com/segmentio/kafka-go"
 )
 
 type Handler struct {
@@ -12,25 +14,21 @@ type Handler struct {
 }
 
 type Receiver interface {
-	Receive(ctx context.Context, l track.Location)
+	Receive(l track.Location)
 }
 
-func (h *Handler) Listen() {
-	locTest := float64(0)
-	ctx := context.Background()
-
-	// TODO logic to parse location
-
+func (h *Handler) Listen(ctx context.Context, r *kafka.Reader) {
 	for {
-		loc := track.Location{
-			Long: locTest,
-			Lat:  locTest,
+		m, err := r.ReadMessage(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to read message")
 		}
+		log.Debug().Any("key", m).Msg("message received")
 
-		h.r.Receive(ctx, loc)
+		var loc track.Location
+		json.Unmarshal(m.Value, &loc)
 
-		locTest++
-		time.Sleep(time.Second)
+		h.r.Receive(loc)
 	}
 }
 
