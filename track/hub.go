@@ -2,9 +2,6 @@ package track
 
 import "sync"
 
-// hub will be saving all the customer that connects with our apps.
-// hub will save the customer with location channel.
-// Location channel must be defined by the client and client will also need to handle the event sent to that channel.
 type hub struct {
 	customers map[string]chan Location
 	mu        sync.Mutex

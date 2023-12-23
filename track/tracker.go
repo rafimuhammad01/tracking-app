@@ -46,7 +46,7 @@ func (t *Tracker) Receive(l Location) {
 	t.h.receive(l)
 }
 
-// Register will register the client to the Hub.
+// Register will register the client to the hub.
 // If client want to receive message they need to register the customer and location channel.
 func (t *Tracker) Register(c Customer, l chan Location) {
 	t.h.register(c, l)
