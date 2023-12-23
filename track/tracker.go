@@ -1,6 +1,9 @@
 package track
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Customer denotes the customers object.
 // For now, we will just need the ID of it,
@@ -11,9 +14,10 @@ type Customer struct {
 
 // Location denotes the location object.
 type Location struct {
-	Long float64
-	Lat  float64
-	Bus  Bus
+	Long      float64
+	Lat       float64
+	Bus       Bus
+	Timestamp time.Time
 }
 
 // Bus denotes the bus object

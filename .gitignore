@@ -8,3 +8,4 @@ config/production.yaml
 
 # binary files
 tracking-service
+driver-service

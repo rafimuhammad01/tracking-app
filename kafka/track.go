@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 
 	"github.com/rafimuhammad01/tracking-app/track"
@@ -25,14 +26,13 @@ func (t *Tracker) Listen(ctx context.Context) {
 	for {
 		m, err := t.r.ReadMessage(ctx)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				log.Info().Msg("connection closed")
 				break
 			}
 			log.Error().Err(err).Msg("failed to read message")
 			continue
 		}
-		log.Debug().Any("key", m).Msg("message received")
 
 		var loc track.Location
 		err = json.Unmarshal(m.Value, &loc)
@@ -65,6 +65,13 @@ func (t *Tracker) Send(ctx context.Context, l track.Location) error {
 
 func (t *Tracker) ReaderCloser() error {
 	if err := t.r.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Tracker) WriterCloser() error {
+	if err := t.w.Close(); err != nil {
 		return err
 	}
 	return nil

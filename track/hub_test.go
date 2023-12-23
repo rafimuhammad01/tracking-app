@@ -56,9 +56,48 @@ func TestTracking(t *testing.T) {
 
 	wg.Wait()
 	expected := map[string][]Location{
-		"0": {Location{0, 0, Bus{}}, Location{1, 1, Bus{}}, Location{2, 2, Bus{}}},
-		"1": {Location{0, 0, Bus{}}, Location{1, 1, Bus{}}, Location{2, 2, Bus{}}},
-		"2": {Location{0, 0, Bus{}}, Location{1, 1, Bus{}}, Location{2, 2, Bus{}}},
+		"0": {
+			Location{
+				Long: 0,
+				Lat:  0,
+			},
+			Location{
+				Long: 1,
+				Lat:  1,
+			},
+			Location{
+				Long: 2,
+				Lat:  2,
+			},
+		},
+		"1": {
+			Location{
+				Long: 0,
+				Lat:  0,
+			},
+			Location{
+				Long: 1,
+				Lat:  1,
+			},
+			Location{
+				Long: 2,
+				Lat:  2,
+			},
+		},
+		"2": {
+			Location{
+				Long: 0,
+				Lat:  0,
+			},
+			Location{
+				Long: 1,
+				Lat:  1,
+			},
+			Location{
+				Long: 2,
+				Lat:  2,
+			},
+		},
 	}
 
 	assert.EqualValues(t, expected, msgReceived)

@@ -61,7 +61,7 @@ func main() {
 
 	// graceful shutdown
 	<-done
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	var wg sync.WaitGroup
@@ -97,7 +97,6 @@ func main() {
 			log.Fatal().Err(err).Msg("failed to shutdown kafka consumer")
 		case <-kafkaClosed:
 			log.Info().Msg("kafka consumer stopped")
-
 		}
 	}()
 	wg.Wait()

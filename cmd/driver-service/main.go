@@ -52,11 +52,11 @@ func main() {
 
 	// graceful shutdown
 	<-done
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		log.Info().Msg("stopping http server")
@@ -64,6 +64,30 @@ func main() {
 			log.Fatal().Err(err).Msg("failed to shutdown http server")
 		} else {
 			log.Info().Msg("http server stopped")
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		log.Info().Msg("stopping kafka producer connection")
+		kafkaClosed := make(chan struct{})
+		kafkaClosedErr := make(chan error)
+		go func() {
+			if err := dep.KafkaTracker.WriterCloser(); err != nil {
+				kafkaClosedErr <- err
+			} else {
+				kafkaClosed <- struct{}{}
+			}
+
+		}()
+
+		select {
+		case <-ctx.Done():
+			log.Fatal().Err(ctx.Err()).Msg("failed to close kafka producer connection")
+		case err := <-kafkaClosedErr:
+			log.Fatal().Err(err).Msg("failed to close kafka producer connection")
+		case <-kafkaClosed:
+			log.Info().Msg("kafka producer connection closed")
 		}
 	}()
 	wg.Wait()

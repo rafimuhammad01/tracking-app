@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/rafimuhammad01/tracking-app/track"
@@ -69,7 +70,16 @@ func (s *TrackingHandler) GetLatestLocation(w http.ResponseWriter, r *http.Reque
 			log.Error().Err(err).Msg("websocket connection error")
 			return
 		case l := <-locChan:
-			err = c.WriteJSON(l)
+			locResp := struct {
+				Long      float64 `json:"long"`
+				Lat       float64 `json:"lat"`
+				Timestamp string  `json:"timestamp"`
+			}{
+				Long:      l.Long,
+				Lat:       l.Lat,
+				Timestamp: l.Timestamp.Format(time.RFC3339Nano),
+			}
+			err = c.WriteJSON(locResp)
 			if err != nil {
 				log.Error().Err(err).Msg("websocket write json error")
 				return
@@ -88,13 +98,20 @@ func (d *TrackingHandler) SendLocation(w http.ResponseWriter, r *http.Request) {
 
 	// parse location data.
 	var loc track.Location
-	err := json.NewDecoder(r.Body).Decode(&loc)
+	var locReq struct {
+		Long      float64 `json:"long"`
+		Lat       float64 `json:"lat"`
+		Timestamp string  `json:"timestamp"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&locReq)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(Response{Error: "invalid request body"})
 		return
 	}
+	loc.Long = locReq.Long
+	loc.Lat = locReq.Lat
 
 	// parse vehicle data
 	busID := r.URL.Query().Get("bus_id")
@@ -105,6 +122,20 @@ func (d *TrackingHandler) SendLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	loc.Bus.ID = busID
+
+	// parse timestamp
+	loc.Timestamp = time.Now()
+	if locReq.Timestamp != "" {
+		ts, err := time.Parse(time.RFC3339Nano, locReq.Timestamp)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(Response{Error: "invalid timestamp value"})
+			return
+		}
+
+		loc.Timestamp = ts
+	}
 
 	// send location
 	if err := d.trackingSvc.Send(r.Context(), loc); err != nil {
