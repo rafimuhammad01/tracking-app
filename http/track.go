@@ -1,6 +1,8 @@
 package http
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -10,16 +12,22 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-type Handler struct {
+type Response struct {
+	Data  interface{} `json:"data,omitempty"`
+	Error string      `json:"error,omitempty"`
+}
+
+type TrackingHandler struct {
 	trackingSvc TrackingService
 }
 
 type TrackingService interface {
+	Send(ctx context.Context, l track.Location) error
 	Register(c track.Customer, l chan track.Location)
 	Unregister(c track.Customer)
 }
 
-func (s *Handler) GetLatestLocation(w http.ResponseWriter, r *http.Request) {
+func (s *TrackingHandler) GetLatestLocation(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("error when upgrade header")
@@ -70,8 +78,49 @@ func (s *Handler) GetLatestLocation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func NewHandler(trackingSvc TrackingService) *Handler {
-	return &Handler{
+func (d *TrackingHandler) SendLocation(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Response{Error: "method not allowed"})
+		return
+	}
+
+	// parse location data.
+	var loc track.Location
+	err := json.NewDecoder(r.Body).Decode(&loc)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Response{Error: "invalid request body"})
+		return
+	}
+
+	// parse vehicle data
+	busID := r.URL.Query().Get("bus_id")
+	if busID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Response{Error: "invalid bus_id value"})
+		return
+	}
+	loc.Bus.ID = busID
+
+	// send location
+	if err := d.trackingSvc.Send(r.Context(), loc); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Response{Error: "internal server error"})
+		return
+	}
+
+	// return
+	json.NewEncoder(w).Encode(Response{Data: "success"})
+	return
+}
+
+func NewHandler(trackingSvc TrackingService) *TrackingHandler {
+	return &TrackingHandler{
 		trackingSvc: trackingSvc,
 	}
 }

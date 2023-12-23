@@ -10,6 +10,7 @@ kafka:
     topic: location
 
 http:
-  port: 8080
-
+  driver_port : 8081
+  tracker_port: 8080
+  
 debug: true

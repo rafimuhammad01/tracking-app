@@ -9,7 +9,9 @@ import (
 )
 
 func TestTracking(t *testing.T) {
-	h := NewHub()
+	h := hub{
+		customers: make(map[string]chan Location),
+	}
 
 	var wg sync.WaitGroup
 	var wgRegister sync.WaitGroup
@@ -23,7 +25,7 @@ func TestTracking(t *testing.T) {
 		go func(id string) {
 			c := Customer{ID: id}
 			l := make(chan Location)
-			h.Register(c, l)
+			h.register(c, l)
 			wgRegister.Done()
 
 			for j := 0; j < 3; j++ {
@@ -33,7 +35,7 @@ func TestTracking(t *testing.T) {
 				mu.Unlock()
 			}
 
-			h.Unregister(c)
+			h.unregister(c)
 			wg.Done()
 		}(fmt.Sprint(i))
 	}
@@ -47,16 +49,16 @@ func TestTracking(t *testing.T) {
 				Long: float64(i),
 				Lat:  float64(i),
 			}
-			h.Receive(loc)
+			h.receive(loc)
 		}
 		wg.Done()
 	}()
 
 	wg.Wait()
 	expected := map[string][]Location{
-		"0": {Location{0, 0}, Location{1, 1}, Location{2, 2}},
-		"1": {Location{0, 0}, Location{1, 1}, Location{2, 2}},
-		"2": {Location{0, 0}, Location{1, 1}, Location{2, 2}},
+		"0": {Location{0, 0, Bus{}}, Location{1, 1, Bus{}}, Location{2, 2, Bus{}}},
+		"1": {Location{0, 0, Bus{}}, Location{1, 1, Bus{}}, Location{2, 2, Bus{}}},
+		"2": {Location{0, 0, Bus{}}, Location{1, 1, Bus{}}, Location{2, 2, Bus{}}},
 	}
 
 	assert.EqualValues(t, expected, msgReceived)

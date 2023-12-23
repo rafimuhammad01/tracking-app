@@ -18,7 +18,8 @@ type (
 	}
 
 	HTTP struct {
-		Port string `mapstructure:"port"`
+		DriverPort  string `mapstructure:"driver_port"`
+		TrackerPort string `mapstructure:"tracker_port"`
 	}
 
 	Kafka struct {

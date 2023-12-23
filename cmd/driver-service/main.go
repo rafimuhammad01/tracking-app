@@ -4,25 +4,21 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
-	"sync"
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/segmentio/kafka-go"
-	"github.com/segmentio/kafka-go/sasl/scram"
-
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/rafimuhammad01/tracking-app/config"
 	ihttp "github.com/rafimuhammad01/tracking-app/http"
 	ikafka "github.com/rafimuhammad01/tracking-app/kafka"
-
 	"github.com/rafimuhammad01/tracking-app/track"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/scram"
 )
 
 func main() {
@@ -54,18 +50,13 @@ func main() {
 		}
 	}()
 
-	go func() {
-		log.Info().Any("topic", dep.KafkaTracker.ReaderTopic().Topic).Msg("starting kafka consumer")
-		dep.KafkaTracker.Listen(ctx)
-	}()
-
 	// graceful shutdown
 	<-done
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		log.Info().Msg("stopping http server")
@@ -73,31 +64,6 @@ func main() {
 			log.Fatal().Err(err).Msg("failed to shutdown http server")
 		} else {
 			log.Info().Msg("http server stopped")
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		log.Info().Msg("stopping kafka consumer")
-		kafkaClosed := make(chan struct{})
-		kafkaClosedErr := make(chan error)
-		go func() {
-			if err := dep.KafkaTracker.ReaderCloser(); err != nil {
-				kafkaClosedErr <- err
-			} else {
-				kafkaClosed <- struct{}{}
-			}
-
-		}()
-
-		select {
-		case <-ctx.Done():
-			log.Fatal().Err(ctx.Err()).Msg("failed to shutdown kafka consumer")
-		case err := <-kafkaClosedErr:
-			log.Fatal().Err(err).Msg("failed to shutdown kafka consumer")
-		case <-kafkaClosed:
-			log.Info().Msg("kafka consumer stopped")
-
 		}
 	}()
 	wg.Wait()
@@ -110,11 +76,11 @@ type Dependency struct {
 }
 
 func InitDependency() *Dependency {
-	tracker := track.NewTracker(track.WithHub())
+	writer := NewKafkaWriter()
+	kafkaTracker := ikafka.NewTracker(ikafka.WithWriter(writer))
 
-	consumer := NewKafkaConsumer()
+	tracker := track.NewTracker(track.WithSender(kafkaTracker))
 	httpHandler := ihttp.NewHandler(tracker)
-	kafkaTracker := ikafka.NewTracker(ikafka.WithReceiver(tracker, consumer))
 
 	return &Dependency{
 		Tracker:      tracker,
@@ -124,16 +90,16 @@ func InitDependency() *Dependency {
 }
 
 func NewHTTPServer(d *Dependency) *http.Server {
-	port := ":" + config.Get().HTTP.TrackerPort
+	port := ":" + config.Get().HTTP.DriverPort
 	srv := &http.Server{
 		Addr: port,
 	}
 
-	http.HandleFunc("/location", d.HTTPHandler.GetLatestLocation)
+	http.HandleFunc("/location", d.HTTPHandler.SendLocation)
 	return srv
 }
 
-func NewKafkaConsumer() *kafka.Reader {
+func NewKafkaWriter() *kafka.Writer {
 	mechanism, err := scram.Mechanism(scram.SHA256, config.Get().Kafka.Connection.Username, config.Get().Kafka.Connection.Password)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to start kafka consumer")
@@ -144,15 +110,12 @@ func NewKafkaConsumer() *kafka.Reader {
 		TLS:           &tls.Config{},
 	}
 
-	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     config.Get().Kafka.Connection.Brokers,
-		Topic:       config.Get().Kafka.Consumer.Topic,
-		MinBytes:    config.Get().Kafka.Consumer.MinBytes,
-		MaxBytes:    config.Get().Kafka.Consumer.MaxBytes,
-		Dialer:      dialer,
-		StartOffset: kafka.LastOffset,
-		GroupID:     uuid.NewString(),
+	w := kafka.NewWriter(kafka.WriterConfig{
+		Brokers:  config.Get().Kafka.Connection.Brokers,
+		Topic:    config.Get().Kafka.Consumer.Topic,
+		Balancer: &kafka.Hash{},
+		Dialer:   dialer,
 	})
 
-	return r
+	return w
 }
